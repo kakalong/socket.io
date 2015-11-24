@@ -328,6 +328,32 @@ describe('socket.io', function(){
           done();
         });
     });
+
+    it('should allow request if custom function in opts.allowRequest returns true', function(done){
+      var sockets = io(http().listen(54022), { allowRequest: function (req, callback) {
+        return callback(null, true);
+      }, origins: 'http://foo.example:*' });
+
+      request.get('http://localhost:54022/socket.io/default/')
+       .query({ transport: 'polling' })
+       .end(function (err, res) {
+          expect(res.status).to.be(200);
+          done();
+        });
+    });
+
+    it('should disallow request if custom function in opts.allowRequest returns false', function(done){
+      var sockets = io(http().listen(54023), { allowRequest: function (req, callback) {
+        return callback(null, false);
+      } });
+      request.get('http://localhost:54023/socket.io/default/')
+       .set('origin', 'http://foo.example')
+       .query({ transport: 'polling' })
+       .end(function (err, res) {
+          expect(res.status).to.be(400);
+          done();
+        });
+    });
   });
 
   describe('close', function(){
@@ -342,12 +368,12 @@ describe('socket.io', function(){
       var clientSocket = client(srv, { reconnection: false });
 
       clientSocket.on('disconnect', function init() {
-        expect(sio.nsps['/'].sockets.length).to.equal(0);
+        expect(Object.keys(sio.nsps['/'].sockets).length).to.equal(0);
         server.listen(PORT);
       });
 
       clientSocket.on('connect', function init() {
-        expect(sio.nsps['/'].sockets.length).to.equal(1);
+        expect(Object.keys(sio.nsps['/'].sockets).length).to.equal(1);
         sio.close();
       });
 
@@ -369,12 +395,12 @@ describe('socket.io', function(){
       var clientSocket = ioc('ws://0.0.0.0:' + PORT);
 
       clientSocket.on('disconnect', function init() {
-        expect(sio.nsps['/'].sockets.length).to.equal(0);
+        expect(Object.keys(sio.nsps['/'].sockets).length).to.equal(0);
         server.listen(PORT);
       });
 
       clientSocket.on('connect', function init() {
-        expect(sio.nsps['/'].sockets.length).to.equal(1);
+        expect(Object.keys(sio.nsps['/'].sockets).length).to.equal(1);
         sio.close();
       });
 
@@ -642,7 +668,7 @@ describe('socket.io', function(){
       });
       function getClients() {
         sio.of('/chat').clients(function(error, sids) {
-          expect(error).to.be.undefined;
+          expect(error).to.not.be.ok();
           expect(sids).to.contain(chatSids[0]);
           expect(sids).to.contain(chatSids[1]);
           expect(sids).to.not.contain(otherSid);
@@ -685,7 +711,7 @@ describe('socket.io', function(){
       });
       function getClients() {
         sio.of('/chat').in('foo').clients(function(error, sids) {
-          expect(error).to.be.undefined;
+          expect(error).to.not.be.ok();
           expect(sids).to.contain(chatFooSid);
           expect(sids).to.not.contain(chatBarSid);
           expect(sids).to.not.contain(otherSid);
@@ -728,7 +754,7 @@ describe('socket.io', function(){
       });
       function getClients() {
         sio.of('/chat').clients(function(error, sids) {
-          expect(error).to.be.undefined;
+          expect(error).to.not.be.ok();
           expect(sids).to.contain(chatFooSid);
           expect(sids).to.contain(chatBarSid);
           expect(sids).to.not.contain(otherSid);
@@ -1485,7 +1511,7 @@ describe('socket.io', function(){
     it('should handle very large json', function(done){
       this.timeout(30000);
       var srv = http();
-      var sio = io(srv);
+      var sio = io(srv, { perMessageDeflate: false });
       var received = 0;
       srv.listen(function(){
         var socket = client(srv);
@@ -1512,7 +1538,7 @@ describe('socket.io', function(){
     it('should handle very large binary data', function(done){
       this.timeout(10000);
       var srv = http();
-      var sio = io(srv);
+      var sio = io(srv, { perMessageDeflate: false });
       var received = 0;
       srv.listen(function(){
         var socket = client(srv);
@@ -1639,6 +1665,23 @@ describe('socket.io', function(){
           s.conn.on('upgrade', function(){
             socket.io.engine.write('5');
           });
+        });
+      });
+    });
+
+    it('should not crash when messing with Object prototype', function(done){
+      Object.prototype.foo = 'bar';
+      var srv = http();
+      var sio = io(srv);
+      srv.listen(function(){
+        var socket = client(srv);
+
+        sio.on('connection', function(s){
+          s.disconnect(true);
+          sio.close();
+          setTimeout(function(){
+            done();
+          }, 100);
         });
       });
     });
@@ -1906,15 +1949,15 @@ describe('socket.io', function(){
         var socket = client(srv);
         sio.on('connection', function(s){
           s.join('a', function(){
-            expect(s.rooms).to.eql([s.id, 'a']);
+            expect(Object.keys(s.rooms)).to.eql([s.id, 'a']);
             s.join('b', function(){
-              expect(s.rooms).to.eql([s.id, 'a', 'b']);
+              expect(Object.keys(s.rooms)).to.eql([s.id, 'a', 'b']);
               s.join( 'c', function(){
-                expect(s.rooms).to.eql([s.id, 'a', 'b', 'c']);
+                expect(Object.keys(s.rooms)).to.eql([s.id, 'a', 'b', 'c']);
                 s.leave('b', function(){
-                  expect(s.rooms).to.eql([s.id, 'a', 'c']);
+                  expect(Object.keys(s.rooms)).to.eql([s.id, 'a', 'c']);
                   s.leaveAll();
-                  expect(s.rooms).to.eql([]);
+                  expect(Object.keys(s.rooms)).to.eql([]);
                   done();
                 });
               });
@@ -1950,13 +1993,13 @@ describe('socket.io', function(){
         var socket = client(srv);
         sio.on('connection', function(s){
           s.join('a', function(){
-            expect(s.rooms).to.eql([s.id, 'a']);
+            expect(Object.keys(s.rooms)).to.eql([s.id, 'a']);
             s.join('b', function(){
-              expect(s.rooms).to.eql([s.id, 'a', 'b']);
+              expect(Object.keys(s.rooms)).to.eql([s.id, 'a', 'b']);
               s.leave('unknown', function(){
-                expect(s.rooms).to.eql([s.id, 'a', 'b']);
+                expect(Object.keys(s.rooms)).to.eql([s.id, 'a', 'b']);
                 s.leaveAll();
-                expect(s.rooms).to.eql([]);
+                expect(Object.keys(s.rooms)).to.eql([]);
                 done();
               });
             });
