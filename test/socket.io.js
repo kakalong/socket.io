@@ -1536,7 +1536,7 @@ describe('socket.io', function(){
     });
 
     it('should handle very large binary data', function(done){
-      this.timeout(10000);
+      this.timeout(30000);
       var srv = http();
       var sio = io(srv, { perMessageDeflate: false });
       var received = 0;
@@ -1685,6 +1685,21 @@ describe('socket.io', function(){
         });
       });
     });
+
+    it('should always trigger the callback (if provided) when joining a room', function(done){
+      var srv = http();
+      var sio = io(srv);
+
+      srv.listen(function(){
+        var socket = client(srv);
+        sio.on('connection', function(s){
+          s.join('a', function(){
+            s.join('a', done);
+          });
+        });
+      });
+    });
+
   });
 
   describe('messaging many', function(){
