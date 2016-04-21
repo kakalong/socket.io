@@ -2,6 +2,8 @@
 # socket.io
 
 [![Build Status](https://secure.travis-ci.org/socketio/socket.io.svg)](https://travis-ci.org/socketio/socket.io)
+[![Dependency Status](https://david-dm.org/socketio/socket.io.svg)](https://david-dm.org/socketio/socket.io)
+[![devDependency Status](https://david-dm.org/socketio/socket.io/dev-status.svg)](https://david-dm.org/socketio/socket.io#info=devDependencies)
 ![NPM version](https://badge.fury.io/js/socket.io.svg)
 ![Downloads](https://img.shields.io/npm/dm/socket.io.svg?style=flat)
 [![](http://slack.socket.io/badge.svg?)](http://slack.socket.io)
@@ -299,9 +301,10 @@ server.listen(3000);
   clients. A `Socket` belongs to a certain `Namespace` (by default `/`)
   and uses an underlying `Client` to communicate.
 
-### Socket#rooms:Array
+### Socket#rooms:Object
 
-  A list of strings identifying the rooms this socket is in.
+  A hash of strings identifying the rooms this socket is in, indexed by
+  room name.
 
 ### Socket#client:Client
 
@@ -390,6 +393,12 @@ server.listen(3000);
     socket.compress(false).emit('an event', { some: 'data' });
   });
   ```
+  
+### Socket#disconnect(close:Boolean):Socket
+    
+  Disconnects this client. If value of close is `true`, closes the underlying connection. 
+  Otherwise, it just disconnects the namespace.
+    
 
 ### Client
 
@@ -418,6 +427,17 @@ To see the output from all of Socket.IO's debugging scopes you can use:
 ```
 DEBUG=socket.io* node myapp
 ```
+
+## Testing
+
+```
+npm test
+```
+This runs the `gulp` task `test`. By default the test will be run with the source code in `lib` directory.
+
+Set the environmental variable `TEST_VERSION` to `compat` to test the transpiled es5-compat version of the code.
+
+The `gulp` task `test` will always transpile the source code into es5 and export to `dist` first before running the test.
 
 ## License
 
